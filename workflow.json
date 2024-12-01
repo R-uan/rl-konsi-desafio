@@ -1,0 +1,318 @@
+{
+  "name": "soft-eng-junior",
+  "nodes": [
+    {
+      "parameters": {
+        "binaryPropertyName": "data0",
+        "options": {}
+      },
+      "id": "4bb3ba5d-b1d7-4c86-bd9c-1e5ae2485ec3",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        360,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let results = $input.all().map((lead) => {\n  let person = lead.json\n  let [firstName, ...lastName] = person.name.split(\" \")\n  \n  let phone = person.phone.replace(/\\D/g, '');\n  if(!phone.startsWith(\"55\")) {\n    phone = '55' + phone;\n  }\n\n  if (phone.length === 12) {\n    phone = phone.slice(0, 4) + '9' + phone.slice(4);\n  }\n  \n  let cpf = person.cpf.padStart(11, '0');\n  const releasedValue = parseFloat(person.released_value).toFixed(2);\n\n  const [day, month, year] = person.birthdate.split('/');\n  const birthDate = new Date(year, month - 1, day);\n  const age = new Date().getFullYear() - birthDate.getFullYear();\n  \n  return {\n    json: {\n      first_name: firstName,\n      last_name: lastName.join(\" \"),\n      name: person.name,\n      birthdate: person.birthdate,\n      phone: phone,\n      cpf: cpf,\n      released_value: parseFloat(releasedValue),\n      age: age,\n      created_at: new Date()\n    }\n  }\n})\n\nreturn results;"
+      },
+      "id": "78bb4c5c-2f98-49ed-974f-cf0ec7960092",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "lead",
+        "fields": "=first_name,last_name,name,birthdate,phone,cpf,released_value,age",
+        "options": {
+          "dateFields": "birthdate"
+        }
+      },
+      "id": "0afb82a7-1208-4136-b3aa-76aeafb9acaf",
+      "name": "MongoDB",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        440
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "8Jv40dfSF37G6xGo",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "id": "2189b7f6-1bb7-4da6-8b4c-9b2162f188ff",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        140,
+        440
+      ],
+      "webhookId": "2d367b15-d6fb-4cb4-9c5b-94e65dbcb7ca"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return $input.item.json.body"
+      },
+      "id": "6bf96210-651d-4d0c-aafe-332eb7b4f5c7",
+      "name": "Code1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        700
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "collection": "lead",
+        "options": {},
+        "query": "={ \"phone\": \"{{ $json.phone }}\"  }"
+      },
+      "id": "1b64f2f0-efb6-40c0-95f5-b40504ba74ee",
+      "name": "MongoDB1",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        580,
+        700
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "8Jv40dfSF37G6xGo",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "search",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8d92cb46-1a13-497a-848b-0f45674a4947",
+      "name": "Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        140,
+        700
+      ],
+      "webhookId": "363d85bc-2c2d-4b6e-b55d-72fea659879c"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "e5e9759f-859a-47a1-a08d-b4281951f036",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        940,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"message\": \"Nenhum lead foi encontrado\"\n}",
+        "options": {}
+      },
+      "id": "601f8eaa-1985-4665-a149-87e772e09565",
+      "name": "Respond to Webhook1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        940,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.isEmpty()}}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0fecc1c5-7314-4b26-ae16-0f84333758ed",
+                    "leftValue": "={{$json.isEmpty()}}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4fe48a0f-60e9-4285-ba32-2a173407219d",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        780,
+        700
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "MongoDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "MongoDB1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB1": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cd53e974-e3d2-44d0-ab29-16968380da52",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "821bc85b567ea5d1f0487912e245b8bc49e0fff29ef7870da069741d50074f81"
+  },
+  "id": "E6SgAn1Jf1hnLz9A",
+  "tags": []
+}

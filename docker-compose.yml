@@ -1,0 +1,28 @@
+services:
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: leads
+    networks:
+      - n8n_mongo_network
+
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n_2
+    ports:
+      - "5678:5678"
+    restart: always
+    networks:
+      - n8n_mongo_network
+    environment:
+      - N8N_USER_MANAGEMENT_DISABLED=false
+      - N8N_DEFAULT_USER_EMAIL=admin@example.com
+      - N8N_DEFAULT_USER_PASSWORD=strongpassword123
+
+networks:
+  n8n_mongo_network:
+    driver: bridge
